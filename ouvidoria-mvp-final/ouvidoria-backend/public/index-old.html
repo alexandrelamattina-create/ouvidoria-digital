@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OuviDigital - Sistema de Ouvidoria Pública Inteligente</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-custom { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Dados simulados
+        const manifestacoesIniciais = [
+            {
+                id: 'M2024-001',
+                protocolo: '202410240001',
+                tipo: 'Reclamação',
+                categoria: 'Saúde',
+                assunto: 'Demora no atendimento UBS',
+                descricao: 'Esperei 4 horas para ser atendida na UBS do bairro Centro.',
+                cidadao: 'Maria Silva',
+                canal: 'Aplicativo',
+                status: 'Em Análise',
+                prioridade: 'Alta',
+                dataAbertura: '2024-10-20T14:30:00',
+                prazoLegal: 20,
+                diasRestantes: 16,
+                responsavel: 'Secretaria de Saúde',
+                resposta: null
+            },
+            {
+                id: 'M2024-002',
+                protocolo: '202410240002',
+                tipo: 'Solicitação',
+                categoria: 'Infraestrutura',
+                assunto: 'Buraco na Rua Principal',
+                descricao: 'Existe um buraco grande na Rua Principal, altura do nº 450.',
+                cidadao: 'João Santos',
+                canal: 'WhatsApp',
+                status: 'Respondida',
+                prioridade: 'Média',
+                dataAbertura: '2024-10-18T10:15:00',
+                prazoLegal: 20,
+                diasRestantes: 14,
+                responsavel: 'Secretaria de Obras',
+                resposta: 'Equipe foi acionada e previsão de reparo é de 5 dias úteis.'
+            },
+            {
+                id: 'M2024-003',
+                protocolo: '202410240003',
+                tipo: 'Elogio',
+                categoria: 'Educação',
+                assunto: 'Excelente atendimento escola',
+                descricao: 'Gostaria de elogiar o atendimento da diretora da Escola Municipal.',
+                cidadao: 'Ana Costa',
+                canal: 'Portal Web',
+                status: 'Finalizada',
+                prioridade: 'Baixa',
+                dataAbertura: '2024-10-15T16:20:00',
+                prazoLegal: 20,
+                diasRestantes: 11,
+                responsavel: 'Secretaria de Educação',
+                resposta: 'Agradecemos seu feedback! Ele será repassado à equipe.'
+            },
+            {
+                id: 'M2024-004',
+                protocolo: '202410240004',
+                tipo: 'Denúncia',
+                categoria: 'Meio Ambiente',
+                assunto: 'Descarte irregular de lixo',
+                descricao: 'Terreno baldio sendo usado como depósito de lixo na Rua das Flores.',
+                cidadao: 'Carlos Oliveira',
+                canal: 'Telefone',
+                status: 'Aguardando Setor',
+                prioridade: 'Alta',
+                dataAbertura: '2024-10-22T09:45:00',
+                prazoLegal: 15,
+                diasRestantes: 13,
+                responsavel: 'Secretaria de Meio Ambiente',
+                resposta: null
+            },
+            {
+                id: 'M2024-005',
+                protocolo: '202410240005',
+                tipo: 'Sugestão',
+                categoria: 'Mobilidade',
+                assunto: 'Novo ponto de ônibus',
+                descricao: 'Sugestão de instalação de ponto de ônibus na Av. Brasil.',
+                cidadao: 'Patricia Lima',
+                canal: 'E-mail',
+                status: 'Nova',
+                prioridade: 'Média',
+                dataAbertura: '2024-10-24T08:00:00',
+                prazoLegal: 30,
+                diasRestantes: 30,
+                responsavel: null,
+                resposta: null
+            }
+        ];
+
+        // Componente Principal
+        function OuvidoriaApp() {
+            const [telaAtual, setTelaAtual] = useState('dashboard');
+            const [manifestacoes, setManifestacoes] = useState(manifestacoesIniciais);
+            const [filtroStatus, setFiltroStatus] = useState('Todas');
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const estatisticas = {
+                total: manifestacoes.length,
+                novas: manifestacoes.filter(m => m.status === 'Nova').length,
+                emAnalise: manifestacoes.filter(m => m.status === 'Em Análise').length,
+                respondidas: manifestacoes.filter(m => m.status === 'Respondida').length,
+                finalizadas: manifestacoes.filter(m => m.status === 'Finalizada').length,
+                atrasadas: manifestacoes.filter(m => m.diasRestantes < 0).length,
+                taxaResposta: Math.round((manifestacoes.filter(m => m.status === 'Respondida' || m.status === 'Finalizada').length / manifestacoes.length) * 100),
+                tempoMedio: 3.5
+            };
+
+            const adicionarManifestacao = (nova) => {
+                const novaManifestacao = {
+                    ...nova,
+                    id: `M2024-${String(manifestacoes.length + 1).padStart(3, '0')}`,
+                    protocolo: `2024102400${manifestacoes.length + 1}`,
+                    status: 'Nova',
+                    dataAbertura: new Date().toISOString(),
+                    diasRestantes: nova.prazoLegal,
+                    responsavel: null,
+                    resposta: null
+                };
+                setManifestacoes([novaManifestacao, ...manifestacoes]);
+            };
+
+            const atualizarManifestacao = (id, updates) => {
+                setManifestacoes(manifestacoes.map(m => 
+                    m.id === id ? { ...m, ...updates } : m
+                ));
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <Header telaAtual={telaAtual} setTelaAtual={setTelaAtual} />
+                    
+                    <div className="container mx-auto px-4 py-6">
+                        {telaAtual === 'dashboard' && (
+                            <Dashboard 
+                                estatisticas={estatisticas} 
+                                manifestacoes={manifestacoes}
+                                setTelaAtual={setTelaAtual}
+                            />
+                        )}
+                        
+                        {telaAtual === 'manifestacoes' && (
+                            <Manifestacoes 
+                                manifestacoes={manifestacoes}
+                                filtroStatus={filtroStatus}
+                                setFiltroStatus={setFiltroStatus}
+                                searchTerm={searchTerm}
+                                setSearchTerm={setSearchTerm}
+                                atualizarManifestacao={atualizarManifestacao}
+                            />
+                        )}
+                        
+                        {telaAtual === 'nova' && (
+                            <NovaManifestacao 
+                                adicionarManifestacao={adicionarManifestacao}
+                                setTelaAtual={setTelaAtual}
+                            />
+                        )}
+                        
+                        {telaAtual === 'relatorios' && (
+                            <Relatorios 
+                                manifestacoes={manifestacoes}
+                                estatisticas={estatisticas}
+                            />
+                        )}
+                        
+                        {telaAtual === 'configuracoes' && (
+                            <Configuracoes />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Header
+        function Header({ telaAtual, setTelaAtual }) {
+            return (
+                <header className="gradient-bg text-white shadow-lg">
+                    <div className="container mx-auto px-4 py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <i className="fas fa-headset text-3xl"></i>
+                                <div>
+                                    <h1 className="text-2xl font-bold">OuviDigital</h1>
+                                    <p className="text-sm opacity-90">Sistema de Ouvidoria Pública</p>
+                                </div>
+                            </div>
+                            
+                            <nav className="hidden md:flex space-x-1">
+                                <NavButton 
+                                    icon="fa-chart-line" 
+                                    label="Dashboard" 
+                                    ativo={telaAtual === 'dashboard'}
+                                    onClick={() => setTelaAtual('dashboard')}
+                                />
+                                <NavButton 
+                                    icon="fa-inbox" 
+                                    label="Manifestações" 
+                                    ativo={telaAtual === 'manifestacoes'}
+                                    onClick={() => setTelaAtual('manifestacoes')}
+                                />
+                                <NavButton 
+                                    icon="fa-plus-circle" 
+                                    label="Nova" 
+                                    ativo={telaAtual === 'nova'}
+                                    onClick={() => setTelaAtual('nova')}
+                                />
+                                <NavButton 
+                                    icon="fa-file-chart-line" 
+                                    label="Relatórios" 
+                                    ativo={telaAtual === 'relatorios'}
+                                    onClick={() => setTelaAtual('relatorios')}
+                                />
+                                <NavButton 
+                                    icon="fa-cog" 
+                                    label="Configurações" 
+                                    ativo={telaAtual === 'configuracoes'}
+                                    onClick={() => setTelaAtual('configuracoes')}
+                                />
+                            </nav>
+                            
+                            <div className="flex items-center space-x-4">
+                                <button className="relative p-2 hover:bg-white/20 rounded-lg transition">
+                                    <i className="fas fa-bell text-xl"></i>
+                                    <span className="absolute top-0 right-0 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                                        <i className="fas fa-user"></i>
+                                    </div>
+                                    <span className="hidden lg:block">Admin</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+            );
+        }
+
+        function NavButton({ icon, label, ativo, onClick }) {
+            return (
+                <button
+                    onClick={onClick}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition ${
+                        ativo 
+                            ? 'bg-white text-purple-700 font-semibold' 
+                            : 'text-white hover:bg-white/20'
+                    }`}
+                >
+                    <i className={`fas ${icon}`}></i>
+                    <span>{label}</span>
+                </button>
+            );
+        }
+
+        // Dashboard
+        function Dashboard({ estatisticas, manifestacoes, setTelaAtual }) {
+            return (
+                <div className="animate-slide-in space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
+                        <div className="text-sm text-gray-500">
+                            <i className="fas fa-calendar-alt mr-2"></i>
+                            Atualizado em {new Date().toLocaleDateString('pt-BR')}
+                        </div>
+                    </div>
+
+                    {/* Cards de Estatísticas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard 
+                            icon="fa-inbox" 
+                            titulo="Total" 
+                            valor={estatisticas.total}
+                            cor="bg-blue-500"
+                            tendencia="+12%"
+                        />
+                        <StatCard 
+                            icon="fa-clock" 
+                            titulo="Aguardando" 
+                            valor={estatisticas.novas + estatisticas.emAnalise}
+                            cor="bg-yellow-500"
+                            tendencia="-5%"
+                        />
+                        <StatCard 
+                            icon="fa-check-circle" 
+                            titulo="Respondidas" 
+                            valor={estatisticas.respondidas}
+                            cor="bg-green-500"
+                            tendencia="+18%"
+                        />
+                        <StatCard 
+                            icon="fa-exclamation-triangle" 
+                            titulo="Atrasadas" 
+                            valor={estatisticas.atrasadas}
+                            cor="bg-red-500"
+                            alerta={estatisticas.atrasadas > 0}
+                        />
+                    </div>
+
+                    {/* Métricas de Performance */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6 card-hover">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-700">Taxa de Resposta</h3>
+                                <i className="fas fa-percentage text-2xl text-purple-500"></i>
+                            </div>
+                            <div className="flex items-end space-x-2">
+                                <span className="text-4xl font-bold text-gray-800">{estatisticas.taxaResposta}%</span>
+                                <span className="text-green-500 text-sm mb-1">
+                                    <i className="fas fa-arrow-up"></i> Meta: 85%
+                                </span>
+                            </div>
+                            <div className="mt-4 bg-gray-200 rounded-full h-2">
+                                <div 
+                                    className="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${estatisticas.taxaResposta}%` }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6 card-hover">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-700">Tempo Médio</h3>
+                                <i className="fas fa-hourglass-half text-2xl text-blue-500"></i>
+                            </div>
+                            <div className="flex items-end space-x-2">
+                                <span className="text-4xl font-bold text-gray-800">{estatisticas.tempoMedio}</span>
+                                <span className="text-gray-500 text-lg mb-1">dias</span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-2">Meta: 5 dias úteis</p>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6 card-hover">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-700">Satisfação</h3>
+                                <i className="fas fa-smile text-2xl text-green-500"></i>
+                            </div>
+                            <div className="flex items-center space-x-1 mb-2">
+                                {[1,2,3,4,5].map(i => (
+                                    <i key={i} className={`fas fa-star text-2xl ${i <= 4 ? 'text-yellow-400' : 'text-gray-300'}`}></i>
+                                ))}
+                            </div>
+                            <p className="text-sm text-gray-500">4.2 de 5.0 (87 avaliações)</p>
+                        </div>
+                    </div>
+
+                    {/* Gráficos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-chart-pie mr-2 text-purple-500"></i>
+                                Manifestações por Tipo
+                            </h3>
+                            <div className="space-y-3">
+                                <TipoBarChart tipo="Reclamação" valor={35} cor="bg-red-500" />
+                                <TipoBarChart tipo="Solicitação" valor={28} cor="bg-blue-500" />
+                                <TipoBarChart tipo="Denúncia" valor={20} cor="bg-orange-500" />
+                                <TipoBarChart tipo="Sugestão" valor={12} cor="bg-purple-500" />
+                                <TipoBarChart tipo="Elogio" valor={5} cor="bg-green-500" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-chart-bar mr-2 text-blue-500"></i>
+                                Manifestações por Canal
+                            </h3>
+                            <div className="space-y-3">
+                                <CanalBarChart canal="WhatsApp" valor={40} icon="fa-whatsapp" cor="bg-green-500" />
+                                <CanalBarChart canal="Portal Web" valor={30} icon="fa-globe" cor="bg-blue-500" />
+                                <CanalBarChart canal="Aplicativo" valor={18} icon="fa-mobile-alt" cor="bg-purple-500" />
+                                <CanalBarChart canal="Telefone" valor={8} icon="fa-phone" cor="bg-yellow-500" />
+                                <CanalBarChart canal="E-mail" valor={4} icon="fa-envelope" cor="bg-gray-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Alertas e Manifestações Recentes */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-bell text-red-500 mr-2"></i>
+                                Alertas Importantes
+                            </h3>
+                            <div className="space-y-3">
+                                <AlertaItem 
+                                    tipo="danger"
+                                    mensagem="3 manifestações próximas ao vencimento"
+                                    acao="Ver detalhes"
+                                    onClick={() => setTelaAtual('manifestacoes')}
+                                />
+                                <AlertaItem 
+                                    tipo="warning"
+                                    mensagem="5 manifestações aguardando triagem"
+                                    acao="Triar agora"
+                                />
+                                <AlertaItem 
+                                    tipo="info"
+                                    mensagem="Nova atualização de sistema disponível"
+                                    acao="Atualizar"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-history text-blue-500 mr-2"></i>
+                                Manifestações Recentes
+                            </h3>
+                            <div className="space-y-3">
+                                {manifestacoes.slice(0, 3).map(m => (
+                                    <div key={m.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getTipoColor(m.tipo)}`}>
+                                            <i className={`fas ${getTipoIcon(m.tipo)} text-white`}></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-800 text-sm">{m.assunto}</p>
+                                            <p className="text-xs text-gray-500">{m.protocolo} • {formatarData(m.dataAbertura)}</p>
+                                        </div>
+                                        <StatusBadge status={m.status} />
+                                    </div>
+                                ))}
+                            </div>
+                            <button 
+                                onClick={() => setTelaAtual('manifestacoes')}
+                                className="mt-4 w-full py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition font-medium"
+                            >
+                                Ver todas →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatCard({ icon, titulo, valor, cor, tendencia, alerta }) {
+            return (
+                <div className={`bg-white rounded-xl shadow-md p-6 card-hover ${alerta ? 'ring-2 ring-red-300' : ''}`}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">{titulo}</p>
+                            <p className="text-3xl font-bold text-gray-800 mt-2">{valor}</p>
+                            {tendencia && (
+                                <p className={`text-sm mt-2 ${tendencia.includes('+') ? 'text-green-500' : 'text-red-500'}`}>
+                                    {tendencia} vs mês anterior
+                                </p>
+                            )}
+                        </div>
+                        <div className={`w-16 h-16 ${cor} rounded-full flex items-center justify-center`}>
+                            <i className={`fas ${icon} text-3xl text-white`}></i>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function TipoBarChart({ tipo, valor, cor }) {
+            return (
+                <div>
+                    <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-700">{tipo}</span>
+                        <span className="text-gray-500">{valor}%</span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-3">
+                        <div 
+                            className={`${cor} h-3 rounded-full transition-all duration-500`}
+                            style={{ width: `${valor}%` }}
+                        ></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function CanalBarChart({ canal, valor, icon, cor }) {
+            return (
+                <div>
+                    <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-700">
+                            <i className={`fab ${icon} mr-2`}></i>
+                            {canal}
+                        </span>
+                        <span className="text-gray-500">{valor}%</span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-3">
+                        <div 
+                            className={`${cor} h-3 rounded-full transition-all duration-500`}
+                            style={{ width: `${valor}%` }}
+                        ></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AlertaItem({ tipo, mensagem, acao, onClick }) {
+            const cores = {
+                danger: 'bg-red-50 border-red-200 text-red-700',
+                warning: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+                info: 'bg-blue-50 border-blue-200 text-blue-700'
+            };
+
+            return (
+                <div className={`flex items-center justify-between p-3 rounded-lg border ${cores[tipo]}`}>
+                    <p className="text-sm font-medium">{mensagem}</p>
+                    {acao && (
+                        <button 
+                            onClick={onClick}
+                            className="text-sm underline hover:no-underline font-semibold"
+                        >
+                            {acao}
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        // Manifestações
+        function Manifestacoes({ manifestacoes, filtroStatus, setFiltroStatus, searchTerm, setSearchTerm, atualizarManifestacao }) {
+            const [manifestacaoSelecionada, setManifestacaoSelecionada] = useState(null);
+
+            const manifestacoesFiltradas = manifestacoes.filter(m => {
+                const matchStatus = filtroStatus === 'Todas' || m.status === filtroStatus;
+                const matchSearch = m.assunto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                   m.protocolo.includes(searchTerm) ||
+                                   m.cidadao.toLowerCase().includes(searchTerm.toLowerCase());
+                return matchStatus && matchSearch;
+            });
+
+            return (
+                <div className="animate-slide-in">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-3xl font-bold text-gray-800">Manifestações</h2>
+                        <div className="text-sm text-gray-500">
+                            {manifestacoesFiltradas.length} de {manifestacoes.length} manifestações
+                        </div>
+                    </div>
+
+                    {/* Filtros */}
+                    <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-search mr-2"></i>Pesquisar
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Protocolo, assunto ou cidadão..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-filter mr-2"></i>Status
+                                </label>
+                                <select
+                                    value={filtroStatus}
+                                    onChange={(e) => setFiltroStatus(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                                    <option>Todas</option>
+                                    <option>Nova</option>
+                                    <option>Em Análise</option>
+                                    <option>Aguardando Setor</option>
+                                    <option>Respondida</option>
+                                    <option>Finalizada</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Botões de filtro rápido */}
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            {['Todas', 'Nova', 'Em Análise', 'Aguardando Setor', 'Respondida', 'Finalizada'].map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFiltroStatus(status)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                                        filtroStatus === status
+                                            ? 'bg-purple-600 text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Lista de Manifestações */}
+                    <div className="space-y-4">
+                        {manifestacoesFiltradas.map(m => (
+                            <div 
+                                key={m.id}
+                                onClick={() => setManifestacaoSelecionada(m)}
+                                className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition cursor-pointer"
+                            >
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-start space-x-4">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getTipoColor(m.tipo)}`}>
+                                            <i className={`fas ${getTipoIcon(m.tipo)} text-white text-xl`}></i>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center space-x-3 mb-1">
+                                                <h3 className="text-lg font-semibold text-gray-800">{m.assunto}</h3>
+                                                <StatusBadge status={m.status} />
+                                                {m.prioridade === 'Alta' && (
+                                                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded">
+                                                        <i className="fas fa-exclamation-circle mr-1"></i>Alta Prioridade
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-2">{m.descricao}</p>
+                                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                                <span><i className="fas fa-barcode mr-1"></i>{m.protocolo}</span>
+                                                <span><i className="fas fa-user mr-1"></i>{m.cidadao}</span>
+                                                <span><i className="fas fa-tag mr-1"></i>{m.categoria}</span>
+                                                <span><i className={`fab ${getCanalIcon(m.canal)} mr-1`}></i>{m.canal}</span>
+                                                <span><i className="fas fa-calendar mr-1"></i>{formatarData(m.dataAbertura)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                                    <div className="flex items-center space-x-4">
+                                        {m.responsavel && (
+                                            <span className="text-sm text-gray-600">
+                                                <i className="fas fa-building mr-1"></i>
+                                                {m.responsavel}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className={`text-sm font-medium ${
+                                            m.diasRestantes < 5 ? 'text-red-600' : 
+                                            m.diasRestantes < 10 ? 'text-yellow-600' : 'text-green-600'
+                                        }`}>
+                                            <i className="fas fa-clock mr-1"></i>
+                                            {m.diasRestantes} dias restantes
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Modal de Detalhes */}
+                    {manifestacaoSelecionada && (
+                        <ManifestacaoModal 
+                            manifestacao={manifestacaoSelecionada}
+                            onClose={() => setManifestacaoSelecionada(null)}
+                            onAtualizar={atualizarManifestacao}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        function ManifestacaoModal({ manifestacao, onClose, onAtualizar }) {
+            const [novoStatus, setNovoStatus] = useState(manifestacao.status);
+            const [resposta, setResposta] = useState(manifestacao.resposta || '');
+            const [responsavel, setResponsavel] = useState(manifestacao.responsavel || '');
+
+            const handleSalvar = () => {
+                onAtualizar(manifestacao.id, {
+                    status: novoStatus,
+                    resposta: resposta,
+                    responsavel: responsavel
+                });
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-slide-in">
+                        <div className="gradient-bg text-white p-6 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold">{manifestacao.assunto}</h3>
+                                <p className="text-sm opacity-90">Protocolo: {manifestacao.protocolo}</p>
+                            </div>
+                            <button 
+                                onClick={onClose}
+                                className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+                            >
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Informações do Cidadão */}
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                                    <i className="fas fa-user-circle mr-2 text-purple-500"></i>
+                                    Informações do Cidadão
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-500">Nome:</span>
+                                        <p className="font-medium">{manifestacao.cidadao}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Canal:</span>
+                                        <p className="font-medium">
+                                            <i className={`fab ${getCanalIcon(manifestacao.canal)} mr-1`}></i>
+                                            {manifestacao.canal}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Data:</span>
+                                        <p className="font-medium">{formatarDataCompleta(manifestacao.dataAbertura)}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Tipo:</span>
+                                        <p className="font-medium">{manifestacao.tipo}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Descrição */}
+                            <div>
+                                <h4 className="font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i className="fas fa-align-left mr-2 text-blue-500"></i>
+                                    Descrição Completa
+                                </h4>
+                                <p className="text-gray-600 bg-gray-50 p-4 rounded-lg">{manifestacao.descricao}</p>
+                            </div>
+
+                            {/* Gestão */}
+                            <div className="space-y-4">
+                                <h4 className="font-semibold text-gray-700 flex items-center">
+                                    <i className="fas fa-tasks mr-2 text-green-500"></i>
+                                    Gestão da Manifestação
+                                </h4>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                    <select
+                                        value={novoStatus}
+                                        onChange={(e) => setNovoStatus(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        <option>Nova</option>
+                                        <option>Em Análise</option>
+                                        <option>Aguardando Setor</option>
+                                        <option>Respondida</option>
+                                        <option>Finalizada</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Setor Responsável</label>
+                                    <select
+                                        value={responsavel}
+                                        onChange={(e) => setResponsavel(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        <option value="">Selecione um setor</option>
+                                        <option>Secretaria de Saúde</option>
+                                        <option>Secretaria de Educação</option>
+                                        <option>Secretaria de Obras</option>
+                                        <option>Secretaria de Meio Ambiente</option>
+                                        <option>Secretaria de Finanças</option>
+                                        <option>Secretaria de Transporte</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Resposta ao Cidadão</label>
+                                    <textarea
+                                        value={resposta}
+                                        onChange={(e) => setResposta(e.target.value)}
+                                        rows="4"
+                                        placeholder="Digite aqui a resposta que será enviada ao cidadão..."
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            {/* Timeline */}
+                            <div>
+                                <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                                    <i className="fas fa-history mr-2 text-orange-500"></i>
+                                    Histórico
+                                </h4>
+                                <div className="space-y-3">
+                                    <TimelineItem 
+                                        data={manifestacao.dataAbertura}
+                                        evento="Manifestação registrada"
+                                        usuario="Sistema"
+                                        icon="fa-plus-circle"
+                                        cor="text-blue-500"
+                                    />
+                                    {manifestacao.responsavel && (
+                                        <TimelineItem 
+                                            data={manifestacao.dataAbertura}
+                                            evento={`Encaminhado para ${manifestacao.responsavel}`}
+                                            usuario="Admin"
+                                            icon="fa-share"
+                                            cor="text-purple-500"
+                                        />
+                                    )}
+                                    {manifestacao.resposta && (
+                                        <TimelineItem 
+                                            data={manifestacao.dataAbertura}
+                                            evento="Resposta enviada ao cidadão"
+                                            usuario="Atendente"
+                                            icon="fa-reply"
+                                            cor="text-green-500"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Botões */}
+                            <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                                <button
+                                    onClick={handleSalvar}
+                                    className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-medium"
+                                >
+                                    <i className="fas fa-save mr-2"></i>
+                                    Salvar Alterações
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function TimelineItem({ data, evento, usuario, icon, cor }) {
+            return (
+                <div className="flex items-start space-x-3">
+                    <div className={`w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center ${cor}`}>
+                        <i className={`fas ${icon}`}></i>
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">{evento}</p>
+                        <p className="text-xs text-gray-500">{usuario} • {formatarDataCompleta(data)}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        // Nova Manifestação
+        function NovaManifestacao({ adicionarManifestacao, setTelaAtual }) {
+            const [formData, setFormData] = useState({
+                tipo: 'Reclamação',
+                categoria: '',
+                assunto: '',
+                descricao: '',
+                cidadao: '',
+                canal: 'Portal Web',
+                prioridade: 'Média',
+                prazoLegal: 20
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                adicionarManifestacao(formData);
+                alert('Manifestação registrada com sucesso!');
+                setTelaAtual('manifestacoes');
+            };
+
+            const handleChange = (campo, valor) => {
+                setFormData({ ...formData, [campo]: valor });
+            };
+
+            return (
+                <div className="animate-slide-in max-w-4xl mx-auto">
+                    <div className="mb-6">
+                        <button 
+                            onClick={() => setTelaAtual('dashboard')}
+                            className="text-purple-600 hover:text-purple-700 font-medium mb-4"
+                        >
+                            <i className="fas fa-arrow-left mr-2"></i>Voltar
+                        </button>
+                        <h2 className="text-3xl font-bold text-gray-800">Nova Manifestação</h2>
+                        <p className="text-gray-600 mt-2">Registre uma nova manifestação no sistema</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-tag mr-2"></i>Tipo de Manifestação *
+                                </label>
+                                <select
+                                    value={formData.tipo}
+                                    onChange={(e) => handleChange('tipo', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                >
+                                    <option>Reclamação</option>
+                                    <option>Solicitação</option>
+                                    <option>Denúncia</option>
+                                    <option>Sugestão</option>
+                                    <option>Elogio</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-folder mr-2"></i>Categoria *
+                                </label>
+                                <select
+                                    value={formData.categoria}
+                                    onChange={(e) => handleChange('categoria', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                >
+                                    <option value="">Selecione uma categoria</option>
+                                    <option>Saúde</option>
+                                    <option>Educação</option>
+                                    <option>Infraestrutura</option>
+                                    <option>Meio Ambiente</option>
+                                    <option>Mobilidade</option>
+                                    <option>Segurança</option>
+                                    <option>Assistência Social</option>
+                                    <option>Outros</option>
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-heading mr-2"></i>Assunto *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.assunto}
+                                    onChange={(e) => handleChange('assunto', e.target.value)}
+                                    placeholder="Resuma o assunto da manifestação"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-align-left mr-2"></i>Descrição Completa *
+                                </label>
+                                <textarea
+                                    value={formData.descricao}
+                                    onChange={(e) => handleChange('descricao', e.target.value)}
+                                    rows="6"
+                                    placeholder="Descreva detalhadamente a manifestação..."
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-user mr-2"></i>Nome do Cidadão *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.cidadao}
+                                    onChange={(e) => handleChange('cidadao', e.target.value)}
+                                    placeholder="Nome completo"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-phone mr-2"></i>Canal de Atendimento *
+                                </label>
+                                <select
+                                    value={formData.canal}
+                                    onChange={(e) => handleChange('canal', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                >
+                                    <option>Portal Web</option>
+                                    <option>Aplicativo</option>
+                                    <option>WhatsApp</option>
+                                    <option>Telefone</option>
+                                    <option>E-mail</option>
+                                    <option>Presencial</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-exclamation-circle mr-2"></i>Prioridade
+                                </label>
+                                <select
+                                    value={formData.prioridade}
+                                    onChange={(e) => handleChange('prioridade', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                >
+                                    <option>Baixa</option>
+                                    <option>Média</option>
+                                    <option>Alta</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fas fa-clock mr-2"></i>Prazo Legal (dias)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.prazoLegal}
+                                    onChange={(e) => handleChange('prazoLegal', parseInt(e.target.value))}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-sm text-blue-800">
+                                <i className="fas fa-info-circle mr-2"></i>
+                                <strong>Triagem Automática:</strong> O sistema irá analisar o conteúdo da manifestação e sugerir automaticamente o setor responsável com base em palavras-chave e categoria.
+                            </p>
+                        </div>
+
+                        <div className="flex space-x-4 pt-4 border-t border-gray-200">
+                            <button
+                                type="submit"
+                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-medium"
+                            >
+                                <i className="fas fa-check mr-2"></i>
+                                Registrar Manifestação
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTelaAtual('dashboard')}
+                                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            );
+        }
+
+        // Relatórios
+        function Relatorios({ manifestacoes, estatisticas }) {
+            return (
+                <div className="animate-slide-in space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-800">Relatórios e Análises</h2>
+
+                    {/* Cards de Estatísticas Detalhadas */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Performance Mensal</h3>
+                            <div className="space-y-3">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Manifestações Recebidas</span>
+                                    <span className="font-bold">{estatisticas.total}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Taxa de Resolução</span>
+                                    <span className="font-bold text-green-600">{estatisticas.taxaResposta}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Tempo Médio</span>
+                                    <span className="font-bold">{estatisticas.tempoMedio} dias</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Satisfação</span>
+                                    <span className="font-bold text-yellow-600">4.2/5.0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Por Categoria</h3>
+                            <div className="space-y-2">
+                                <RelatorioItem categoria="Saúde" valor="35%" />
+                                <RelatorioItem categoria="Infraestrutura" valor="25%" />
+                                <RelatorioItem categoria="Educação" valor="18%" />
+                                <RelatorioItem categoria="Meio Ambiente" valor="12%" />
+                                <RelatorioItem categoria="Outros" valor="10%" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Tendências</h3>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">vs Mês Anterior</span>
+                                    <span className="text-green-600 font-bold">
+                                        <i className="fas fa-arrow-up mr-1"></i>+12%
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">Pico de Demanda</span>
+                                    <span className="font-bold">Terça-feira</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">Canal Preferido</span>
+                                    <span className="font-bold">WhatsApp</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Botões de Export */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                            <i className="fas fa-download mr-2 text-purple-500"></i>
+                            Exportar Relatórios
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                <i className="fas fa-file-excel"></i>
+                                <span>Excel</span>
+                            </button>
+                            <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                <i className="fas fa-file-pdf"></i>
+                                <span>PDF</span>
+                            </button>
+                            <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i className="fas fa-file-csv"></i>
+                                <span>CSV</span>
+                            </button>
+                            <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                                <i className="fas fa-chart-bar"></i>
+                                <span>Dashboard</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Gráfico de Evolução */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                            <i className="fas fa-chart-line mr-2 text-blue-500"></i>
+                            Evolução Mensal
+                        </h3>
+                        <div className="h-64 flex items-end justify-around space-x-2">
+                            {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'].map((mes, i) => {
+                                const altura = Math.random() * 100 + 50;
+                                return (
+                                    <div key={mes} className="flex-1 flex flex-col items-center">
+                                        <div 
+                                            className="w-full bg-purple-500 rounded-t-lg hover:bg-purple-600 transition cursor-pointer"
+                                            style={{ height: `${altura}px` }}
+                                            title={`${mes}: ${Math.round(altura)} manifestações`}
+                                        ></div>
+                                        <span className="text-xs text-gray-600 mt-2">{mes}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function RelatorioItem({ categoria, valor }) {
+            return (
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">{categoria}</span>
+                    <span className="font-semibold text-purple-600">{valor}</span>
+                </div>
+            );
+        }
+
+        // Configurações
+        function Configuracoes() {
+            return (
+                <div className="animate-slide-in space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-800">Configurações do Sistema</h2>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Configurações Gerais */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-cog mr-2 text-purple-500"></i>
+                                Configurações Gerais
+                            </h3>
+                            <div className="space-y-4">
+                                <ConfigToggle 
+                                    label="Triagem Automática"
+                                    descricao="Atribuir automaticamente manifestações aos setores"
+                                    ativo={true}
+                                />
+                                <ConfigToggle 
+                                    label="Notificações por E-mail"
+                                    descricao="Enviar alertas de novos registros"
+                                    ativo={true}
+                                />
+                                <ConfigToggle 
+                                    label="WhatsApp Business"
+                                    descricao="Integração com API do WhatsApp"
+                                    ativo={false}
+                                />
+                                <ConfigToggle 
+                                    label="Portal do Cidadão"
+                                    descricao="Permitir acompanhamento público"
+                                    ativo={true}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Prazos e SLAs */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-clock mr-2 text-blue-500"></i>
+                                Prazos e SLAs
+                            </h3>
+                            <div className="space-y-4">
+                                <ConfigInput label="Reclamação" valor="20 dias" />
+                                <ConfigInput label="Denúncia" valor="15 dias" />
+                                <ConfigInput label="Solicitação" valor="20 dias" />
+                                <ConfigInput label="Sugestão" valor="30 dias" />
+                                <ConfigInput label="Elogio" valor="10 dias" />
+                            </div>
+                        </div>
+
+                        {/* Canais de Atendimento */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-share-alt mr-2 text-green-500"></i>
+                                Canais de Atendimento
+                            </h3>
+                            <div className="space-y-4">
+                                <CanalConfig canal="WhatsApp" icon="fa-whatsapp" ativo={true} />
+                                <CanalConfig canal="Portal Web" icon="fa-globe" ativo={true} />
+                                <CanalConfig canal="Aplicativo Mobile" icon="fa-mobile-alt" ativo={true} />
+                                <CanalConfig canal="Telefone 0800" icon="fa-phone" ativo={true} />
+                                <CanalConfig canal="E-mail" icon="fa-envelope" ativo={true} />
+                                <CanalConfig canal="Presencial" icon="fa-building" ativo={true} />
+                            </div>
+                        </div>
+
+                        {/* Setores Responsáveis */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                                <i className="fas fa-building mr-2 text-orange-500"></i>
+                                Setores Responsáveis
+                            </h3>
+                            <div className="space-y-2">
+                                <SetorItem setor="Secretaria de Saúde" />
+                                <SetorItem setor="Secretaria de Educação" />
+                                <SetorItem setor="Secretaria de Obras" />
+                                <SetorItem setor="Secretaria de Meio Ambiente" />
+                                <SetorItem setor="Secretaria de Finanças" />
+                                <SetorItem setor="Secretaria de Transporte" />
+                            </div>
+                            <button className="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-purple-500 hover:text-purple-500 transition">
+                                <i className="fas fa-plus mr-2"></i>Adicionar Setor
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Botão Salvar */}
+                    <div className="flex justify-end">
+                        <button className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition font-medium shadow-lg">
+                            <i className="fas fa-save mr-2"></i>
+                            Salvar Configurações
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function ConfigToggle({ label, descricao, ativo }) {
+            return (
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="font-medium text-gray-800">{label}</p>
+                        <p className="text-sm text-gray-500">{descricao}</p>
+                    </div>
+                    <button className={`w-12 h-6 rounded-full transition ${ativo ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        <div className={`w-5 h-5 bg-white rounded-full transition transform ${ativo ? 'translate-x-6' : 'translate-x-1'}`}></div>
+                    </button>
+                </div>
+            );
+        }
+
+        function ConfigInput({ label, valor }) {
+            return (
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                    <input
+                        type="text"
+                        defaultValue={valor}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                </div>
+            );
+        }
+
+        function CanalConfig({ canal, icon, ativo }) {
+            return (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                        <i className={`fab ${icon} text-xl text-gray-600`}></i>
+                        <span className="font-medium text-gray-800">{canal}</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        ativo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                        {ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                </div>
+            );
+        }
+
+        function SetorItem({ setor }) {
+            return (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <span className="text-gray-800">{setor}</span>
+                    <div className="flex space-x-2">
+                        <button className="text-blue-600 hover:text-blue-700">
+                            <i className="fas fa-edit"></i>
+                        </button>
+                        <button className="text-red-600 hover:text-red-700">
+                            <i className="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Funções Auxiliares
+        function StatusBadge({ status }) {
+            const cores = {
+                'Nova': 'bg-blue-100 text-blue-700',
+                'Em Análise': 'bg-yellow-100 text-yellow-700',
+                'Aguardando Setor': 'bg-orange-100 text-orange-700',
+                'Respondida': 'bg-green-100 text-green-700',
+                'Finalizada': 'bg-gray-100 text-gray-700'
+            };
+
+            return (
+                <span className={`status-badge ${cores[status]}`}>
+                    {status}
+                </span>
+            );
+        }
+
+        function getTipoColor(tipo) {
+            const cores = {
+                'Reclamação': 'bg-red-500',
+                'Solicitação': 'bg-blue-500',
+                'Denúncia': 'bg-orange-500',
+                'Sugestão': 'bg-purple-500',
+                'Elogio': 'bg-green-500'
+            };
+            return cores[tipo] || 'bg-gray-500';
+        }
+
+        function getTipoIcon(tipo) {
+            const icones = {
+                'Reclamação': 'fa-frown',
+                'Solicitação': 'fa-hand-paper',
+                'Denúncia': 'fa-exclamation-triangle',
+                'Sugestão': 'fa-lightbulb',
+                'Elogio': 'fa-smile'
+            };
+            return icones[tipo] || 'fa-comment';
+        }
+
+        function getCanalIcon(canal) {
+            const icones = {
+                'WhatsApp': 'fa-whatsapp',
+                'Portal Web': 'fa-globe',
+                'Aplicativo': 'fa-mobile-alt',
+                'Telefone': 'fa-phone',
+                'E-mail': 'fa-envelope',
+                'Presencial': 'fa-building'
+            };
+            return icones[canal] || 'fa-comment';
+        }
+
+        function formatarData(data) {
+            const d = new Date(data);
+            return d.toLocaleDateString('pt-BR');
+        }
+
+        function formatarDataCompleta(data) {
+            const d = new Date(data);
+            return d.toLocaleString('pt-BR');
+        }
+
+        // Renderizar App
+        ReactDOM.render(<OuvidoriaApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

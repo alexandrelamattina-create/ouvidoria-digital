@@ -1,0 +1,153 @@
+╔═══════════════════════════════════════════════════════════════╗
+║         🚀 GUIA RÁPIDO - OUVIDORIA DIGITAL MVP                ║
+║                CRUD FUNCIONAL EM 3 PASSOS                     ║
+╚═══════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────┐
+│  PRÉ-REQUISITO: Instalar Node.js                              │
+└───────────────────────────────────────────────────────────────┘
+
+1. Baixe Node.js em: https://nodejs.org
+2. Instale (versão LTS recomendada)
+3. Verifique: abra terminal e digite "node --version"
+
+
+┌───────────────────────────────────────────────────────────────┐
+│  PASSO 1: Instalar Dependências                               │
+└───────────────────────────────────────────────────────────────┘
+
+Abra o terminal na pasta "ouvidoria-backend" e execute:
+
+    npm install
+
+Aguarde o download das dependências (~30 segundos)
+
+
+┌───────────────────────────────────────────────────────────────┐
+│  PASSO 2: Iniciar o Servidor                                  │
+└───────────────────────────────────────────────────────────────┘
+
+No mesmo terminal, execute:
+
+    npm start
+
+Você verá uma mensagem de confirmação com:
+🚀 SERVIDOR OUVIDORIA DIGITAL INICIADO!
+📍 Servidor rodando em: http://localhost:3000
+
+
+┌───────────────────────────────────────────────────────────────┐
+│  PASSO 3: Acessar o Sistema                                   │
+└───────────────────────────────────────────────────────────────┘
+
+Abra seu navegador (Chrome, Firefox, Edge) e acesse:
+
+    http://localhost:3000
+
+PRONTO! O sistema está funcionando! 🎉
+
+
+═══════════════════════════════════════════════════════════════
+
+🎯 TESTE AS FUNCIONALIDADES:
+
+✅ Ver Lista de Manifestações
+   - Aba "Manifestações"
+   - 3 exemplos já vêm cadastrados
+
+✅ Criar Nova Manifestação
+   - Aba "Nova"
+   - Preencha o formulário
+   - Clique em "Registrar Manifestação"
+
+✅ Editar Manifestação
+   - Aba "Manifestações"
+   - Clique em "Visualizar" em qualquer item
+   - Altere status, resposta ou responsável
+   - Clique em "Salvar Alterações"
+
+✅ Deletar Manifestação
+   - Aba "Manifestações"  
+   - Clique no ícone de lixeira
+   - Confirme a exclusão
+
+✅ Ver Estatísticas
+   - Aba "Estatísticas"
+   - Veja totais e distribuição por status
+
+═══════════════════════════════════════════════════════════════
+
+🗄️ SOBRE O BANCO DE DADOS:
+
+• Tipo: SQLite (arquivo local)
+• Arquivo: ouvidoria.db (criado automaticamente)
+• Localização: mesma pasta do server.js
+• Os dados SÃO PERSISTENTES (não somem ao fechar)
+
+═══════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANTE:
+
+• Mantenha o terminal ABERTO enquanto usar o sistema
+• Para parar o servidor: Pressione Ctrl+C no terminal
+• Dados são salvos no arquivo ouvidoria.db
+• Para resetar: delete ouvidoria.db e reinicie
+
+═══════════════════════════════════════════════════════════════
+
+🔧 COMANDOS ÚTEIS:
+
+Iniciar servidor:
+    npm start
+
+Parar servidor:
+    Ctrl+C (no terminal)
+
+Ver logs em tempo real:
+    (já aparece no terminal automaticamente)
+
+Limpar banco de dados:
+    delete o arquivo ouvidoria.db
+    reinicie o servidor
+
+═══════════════════════════════════════════════════════════════
+
+🐛 PROBLEMAS COMUNS:
+
+❌ "Cannot find module"
+   Solução: Execute "npm install"
+
+❌ "Port 3000 already in use"
+   Solução: Mude a porta em server.js (linha 6)
+   ou mate o processo usando a porta
+
+❌ "Node não é reconhecido"
+   Solução: Instale Node.js de nodejs.org
+
+❌ Página não carrega
+   Solução: Verifique se o servidor está rodando
+   no terminal
+
+═══════════════════════════════════════════════════════════════
+
+📚 DOCUMENTAÇÃO COMPLETA:
+
+Leia o arquivo README.md para:
+• Documentação completa da API
+• Como fazer deploy em produção  
+• Personalizações avançadas
+• Endpoints e exemplos de uso
+• Próximos passos e melhorias
+
+═══════════════════════════════════════════════════════════════
+
+✨ DIVIRTA-SE TESTANDO O MVP!
+
+Este é um sistema TOTALMENTE FUNCIONAL com:
+- Backend real
+- Banco de dados persistente
+- CRUD completo
+- API REST
+- Interface moderna
+
+═══════════════════════════════════════════════════════════════
